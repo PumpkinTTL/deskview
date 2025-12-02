@@ -1,0 +1,18 @@
+
+@font-face {
+  font-family: 'OPPO Sans';
+  src: url('@/assets/font/OPPO Sans 4.0.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+:root {
+  font-family: 'OPPO Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+*{
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
