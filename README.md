@@ -7,8 +7,12 @@
 ```
 deskview/
 ├── main.py              # 主程序入口，启动PyWebView桌面应用
-├── apis.py              # API接口定义，包含Winsurf代理管理功能
+├── apis.py              # API接口定义
+├── config.py            # 环境配置管理
 ├── requirements.txt     # Python依赖包列表
+├── .env                 # 环境变量配置（不提交到Git）
+├── .env.example         # 环境变量配置示例
+├── .env.production      # 生产环境配置示例
 ├── .gitignore          # Git忽略文件配置
 ├── frontend/           # Vue.js前端项目
 │   ├── src/           # 前端源代码
@@ -65,6 +69,16 @@ deskview/
    cd ..
    ```
 
+5. **配置环境变量**
+   ```bash
+   # 复制环境配置文件
+   cp .env.example .env
+   
+   # 根据需要修改 .env 文件
+   # ENV=development  # 开发环境
+   # ENV=production   # 生产环境
+   ```
+
 ### 运行应用
 
 1. **启动应用**
@@ -93,8 +107,49 @@ deskview/
 - ✅ 窗口大小调整
 - ✅ Shell命令执行
 - ✅ 通知功能
-- ✅ Winsurf代理管理（可选）
+- ✅ 环境配置管理（开发/生产）
+- ✅ 智能端口检测
+- ✅ 进程生命周期管理
 - ✅ 热重载开发环境
+
+## 环境配置
+
+项目使用 `.env` 文件管理环境配置，支持开发和生产环境切换。
+
+### 配置项说明
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `ENV` | 环境模式 (development/production) | development |
+| `DEBUG` | 调试模式 (true/false) | true |
+| `FRONTEND_PORT` | 前端服务端口 | 9696 |
+| `FRONTEND_URL` | 前端服务地址 | http://localhost:9696 |
+| `WINDOW_WIDTH` | 窗口宽度 | 1280 |
+| `WINDOW_HEIGHT` | 窗口高度 | 720 |
+| `WINDOW_MIN_WIDTH` | 窗口最小宽度 | 1024 |
+| `WINDOW_MIN_HEIGHT` | 窗口最小高度 | 600 |
+
+### 切换环境
+
+**开发环境**
+```bash
+# .env 文件
+ENV=development
+DEBUG=true
+```
+
+**生产环境**
+```bash
+# .env 文件
+ENV=production
+DEBUG=false
+```
+
+或者直接复制对应的配置文件：
+```bash
+# 使用生产环境配置
+cp .env.production .env
+```
 
 ## 开发说明
 
@@ -105,7 +160,7 @@ deskview/
 主要文件：
 - `src/App.vue`: 主应用组件
 - `src/views/Home.vue`: 首页组件
-- `src/apis/user.ts`: 用户相关API
+- `src/components/ApiTest.vue`: API测试组件
 - `src/utils/`: 工具函数
 
 ### 后端开发
@@ -114,7 +169,12 @@ deskview/
 - 系统信息获取
 - 窗口操作
 - 命令执行
-- 代理管理
+- 通知功能
+
+配置管理在`config.py`中，支持：
+- 环境变量加载
+- 配置项访问
+- 环境判断
 
 ## 部署说明
 
