@@ -4,7 +4,14 @@ import os
 import time
 import requests
 import threading
+import socket
+import atexit
+import signal
 from datetime import datetime
+
+
+# 全局变量存储前端进程
+frontend_process = None
 
 
 class API:
@@ -88,18 +95,62 @@ class API:
             }
 
 
+def check_port_in_use(port):
+    """检查端口是否被占用"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(('localhost', port))
+            return False  # 端口未被占用
+        except OSError:
+            return True  # 端口已被占用
+
+
 def run_frontend():
-    """在前端目录中异步运行 pnpm dev"""
+    """在前端目录中启动 pnpm dev"""
+    global frontend_process
+    
     frontend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "frontend"))
     print(f"🚀 正在 {frontend_path} 中启动前端服务...")
     
-    # 使用异步子进程（不会阻塞主线程）
-    subprocess.Popen("pnpm dev", cwd=frontend_path, shell=True)
+    # 保存进程引用以便后续关闭
+    frontend_process = subprocess.Popen(
+        "pnpm dev", 
+        cwd=frontend_path, 
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    print(f"✅ 前端进程已启动 (PID: {frontend_process.pid})")
 
 
-def run_frontend_async():
-    """用线程运行前端服务"""
-    threading.Thread(target=run_frontend, daemon=True).start()
+def stop_frontend():
+    """停止前端服务"""
+    global frontend_process
+    
+    if frontend_process:
+        print("🛑 正在关闭前端服务...")
+        try:
+            # Windows 下需要使用 taskkill 来终止进程树
+            if os.name == 'nt':
+                subprocess.run(
+                    f"taskkill /F /T /PID {frontend_process.pid}",
+                    shell=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+            else:
+                frontend_process.terminate()
+                frontend_process.wait(timeout=5)
+            
+            print("✅ 前端服务已关闭")
+            frontend_process = None
+        except Exception as e:
+            print(f"⚠️ 关闭前端服务时出错: {e}")
+
+
+def cleanup():
+    """清理资源"""
+    stop_frontend()
 
 
 def wait_for_frontend_ready(url, timeout=30):
@@ -122,18 +173,36 @@ def wait_for_frontend_ready(url, timeout=30):
 
 if __name__ == "__main__":
     url = "http://localhost:9696"
+    port = 9696
     
-    # 启动前端
     print("="*50)
     print("🎯 桌面端应用启动中...")
     print("="*50)
-    run_frontend_async()
     
-    # 等待前端就绪
-    if not wait_for_frontend_ready(url):
-        print("\n⚠️ 前端服务未能启动，请手动运行 'cd frontend && pnpm dev'")
-        input("按回车键退出...")
-        exit(1)
+    # 注册清理函数
+    atexit.register(cleanup)
+    
+    # 检查端口是否已被占用
+    if check_port_in_use(port):
+        print(f"✅ 检测到端口 {port} 已开启，跳过启动前端服务")
+        # 验证服务是否可访问
+        if not wait_for_frontend_ready(url, timeout=5):
+            print(f"⚠️ 端口 {port} 已占用但服务不可访问，尝试启动新的前端服务...")
+            run_frontend()
+            if not wait_for_frontend_ready(url):
+                print("\n❌ 前端服务启动失败，请检查端口占用情况")
+                input("按回车键退出...")
+                exit(1)
+    else:
+        print(f"🚀 端口 {port} 未占用，启动前端服务...")
+        run_frontend()
+        
+        # 等待前端就绪
+        if not wait_for_frontend_ready(url):
+            print("\n❌ 前端服务未能启动，请手动运行 'cd frontend && pnpm dev'")
+            cleanup()
+            input("按回车键退出...")
+            exit(1)
     
     # 接入后端 API
     api = API()
@@ -153,5 +222,11 @@ if __name__ == "__main__":
     print("✨ 应用启动成功！")
     print("="*50)
     
-    # 启动 GUI
-    webview.start(debug=True)
+    try:
+        # 启动 GUI
+        webview.start(debug=True)
+    finally:
+        # 窗口关闭后清理资源
+        print("\n🔄 应用正在关闭...")
+        cleanup()
+        print("👋 应用已完全退出")
